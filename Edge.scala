@@ -22,4 +22,20 @@ val dataset= data.zipWithIndex.map(x => x._1.split(",") match {
 
 val predictions = model.transform(dataset)
 predictions.orderBy("time").select("id","prediction").repartition(1).write.save("prediction")
+predictions.select("time","id","prediction").dropDuplicates("id","prediction").orderBy("time").select("id","prediction").repartition(1).write.csv("prediction.csv")
 
+//just scala not spark
+import scala.io.Source
+import java.io.File
+import java.io.PrintWriter
+def makeEdge(data: List[String]): List[(String,String)] = {
+    data zip data.tail
+}
+val writer = new PrintWriter(new File("/home/cho/lectures/bdp/edge.txt"))
+var id = -1
+val data = Source.fromFile("/home/cho/lectures/bdp/tmp.csv").getLines().map(_.split(",") match { case Array(id,node) => (id, node)}).toList
+data.groupBy(_._1).map(_._2.map(_._2)).toList.map(makeEdge)
+data.groupBy(_._1).map(_._2.map(_._2)).toList.map(makeEdge).filter(_ != Nil).map(_.map(x => x._1 + " " + x._2)).map(_.mkString("\n") + "\n").mkString
+
+writer.write(data.groupBy(_._1).map(_._2.map(_._2)).toList.map(makeEdge).filter(_ != Nil).map(_.map(x => x._1 + " " + x._2)).map(_.mkString("\n") + "\n").mkString)
+writer.close()   
